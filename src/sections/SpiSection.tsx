@@ -131,6 +131,83 @@ if(sck_tick)begin
     end
 end`;
 
+// SPI 从机:与上方 spi_master 配套的实现(来自用户练习文件 spi_slave_practice.v)
+const spiSlaveCode = `// SPI 从机(模式 0):CPOL=0, CPHA=0;MSB 先发;全双工
+// SCK/MOSI/CS_n 由主机送来,MISO 由从机驱动;帧由 CS 决定,无需 bit_cnt
+module spi_slave (
+    input  wire       clk,       // 从机本地时钟
+    input  wire       rst_n,
+    // —— 四条 SPI 线(从机方向) ——
+    input  wire       sck,       // 时钟(主机送来)
+    input  wire       mosi,      // 主出从入
+    output reg        miso,      // 主入从出
+    input  wire       cs_n,      // 片选(低有效,主机送来)
+    // 要发给主机的字节 + 收到主机的字节
+    input  wire [7:0] tx_data,
+    output reg  [7:0] rx_data
+);
+
+    // SCK/CS_n 来自主机,和本地 clk 不同源,先打两拍同步,再检测边沿
+    reg sck_d1, sck_d2;
+    reg cs_d1, cs_d2;
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            sck_d1 <= 1'b0;
+            sck_d2 <= 1'b0;
+            cs_d1  <= 1'b1;   // CS 空闲为高
+            cs_d2  <= 1'b1;
+        end else begin
+            sck_d1 <= sck;
+            sck_d2 <= sck_d1;
+            cs_d1  <= cs_n;
+            cs_d2  <= cs_d1;
+        end
+    end
+
+    wire sck_fall = sck_d2 & ~sck_d1;   // 同步后的下降沿
+    wire sck_rise = ~sck_d2 & sck_d1;   // 同步后的上升沿
+    wire start    = cs_d2 & ~cs_d1;     // CS 拉低 = 主机开始一次通信
+    wire done     = ~cs_d2 & cs_d1;     // CS 拉高 = 本次通信结束
+
+    reg [7:0] tx_shift;                 // 发送移位寄存器
+    reg [7:0] rx_shift;                 // 接收移位寄存器
+
+    // —— 主控:CS 选通 + SCK 边沿驱动收发(帧由 CS 决定,无需位计数) ——
+    always @(posedge clk or negedge rst_n) begin
+        if(!rst_n) begin
+            // TODO(1) 复位:tx_shift/rx_shift/rx_data 清 0,miso 置 0
+            tx_shift <= 8'd0;
+            rx_shift <= 8'd0;
+            rx_data <= 8'd0;
+            miso <= 1'b0;
+        end else begin
+
+            if(start) begin
+            // TODO(2) CS 拉低:装载要发的字节并先摆出最高位
+            // tx_shift<=tx_data; miso<=tx_data[7]; rx_shift=0
+            tx_shift <= tx_data;
+            miso <= tx_data[7];
+            rx_shift <= 8'd0;
+        end else if(sck_rise) begin
+            // TODO(3) 上升沿:采样主机送来的 MOSI(MSB 先收)
+            // rx_shift <= {rx_shift[6:0], mosi}
+            rx_shift <= {rx_shift[6:0],mosi};
+        end else if(done) begin
+            // TODO(5) CS 拉高:把收好的字节交给 rx_data
+            // rx_data <= rx_shift
+            rx_data <= rx_shift;
+        end else if(sck_fall) begin
+            // TODO(4) 下降沿:移位发送并更新 miso(MSB 先发)
+            // miso<=tx_shift[6]; tx_shift<={tx_shift[6:0],1'b0}
+            miso <= tx_shift[6];
+            tx_shift <= {tx_shift[6:0],1'b0};
+        end
+
+        end
+    end
+
+endmodule`;
+
 /** SPI 一主多从连接示意图（SVG 手绘） */
 const SpiDiagram: React.FC = () => (
   <figure className="my-8">
@@ -321,6 +398,19 @@ const SpiSection: React.FC = () => (
       上升还是下降，看翻转前的电平就够了。反过来，如果以后写 SPI 从机
       （SCK 由外部主机送来），就得用回打拍检测那一套。
     </P>
+    <H3>Verilog 实现：模式 0 从机</H3>
+    <P>
+      <LD>从机是被动的一方：</LD>SCK、MOSI、CS_n 全是主机送进来的输入，只有
+      <IC>miso</IC> 是它自己的输出。CS 拉低 = 一次通信开始，拉高 = 结束——帧的长短
+      由主机说了算，所以从机不像主机那样需要 bit_cnt 去数位。
+    </P>
+    <P>
+      <LD>和主机最大的差别：</LD>SCK 是外部异步信号，没法像主机那样「预知」边沿，
+      只能像 UART 接收那样先打两拍、再比较前后值去「检测」。检测到边沿后做的事和主机
+      对齐：上升沿收 <IC>mosi</IC>（MSB 先收），下降沿把 <IC>miso</IC> 下一位摆出去
+      （MSB 先发），CS 拉高时把收满的字节交给 <IC>rx_data</IC>。
+    </P>
+    <CodeBlock title="spi_slave.v" code={spiSlaveCode} />
   </section>
 );
 
