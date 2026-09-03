@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 14% 5%;
+    --foreground: 0 0% 72%;
+    --card: 220 12% 7%;
+    --card-foreground: 0 0% 72%;
+    --popover: 220 12% 7%;
+    --popover-foreground: 0 0% 72%;
+    --primary: 187 85% 53%;
+    --primary-foreground: 220 14% 5%;
+    --secondary: 220 10% 12%;
+    --secondary-foreground: 0 0% 85%;
+    --muted: 220 10% 12%;
+    --muted-foreground: 220 8% 48%;
+    --accent: 220 10% 14%;
+    --accent-foreground: 187 85% 60%;
+    --destructive: 0 62.8% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 10% 14%;
+    --input: 220 10% 16%;
+    --ring: 187 85% 53%;
+    --radius: 0.375rem;
+    --sidebar-background: 220 14% 4%;
+    --sidebar-foreground: 0 0% 72%;
+    --sidebar-primary: 187 85% 53%;
+    --sidebar-primary-foreground: 220 14% 5%;
+    --sidebar-accent: 220 10% 12%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 220 10% 12%;
+    --sidebar-ring: 187 85% 53%;
+
+    /* signal palette — logic analyzer channels */
+    --sig-cyan: #22d3ee;
+    --sig-amber: #fbbf24;
+    --sig-green: #34d399;
+    --sig-rose: #fb7185;
+    --sig-violet: #a78bfa;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", -apple-system, "PingFang SC", "Hiragino Sans GB",
+      "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  }
+  .font-mono,
+  code,
+  pre {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
+      Consolas, "Liberation Mono", monospace;
+  }
+  ::selection {
+    background: rgba(34, 211, 238, 0.25);
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1f2937;
+    border-radius: 5px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #374151;
+  }
+}
+
+@layer components {
+  /* 页面噪点纹理，营造工程暗色质感 */
+  .noise-bg {
+    position: relative;
+  }
+  .noise-bg::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .readout {
+    @apply font-mono uppercase tracking-[0.25em] text-[11px] text-muted-foreground;
+  }
+  .section-anchor {
+    scroll-margin-top: 4.5rem;
+  }
+}
