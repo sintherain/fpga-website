@@ -109,7 +109,7 @@ const FpgaBasics: React.FC = () => (
     <H3>一块典型的开发板</H3>
     <figure className="my-8">
       <img
-        src="/images/dev-board.png"
+        src={`${import.meta.env.BASE_URL}images/dev-board.png`}
         alt="FPGA 开发板"
         className="w-full rounded-md border border-border"
       />

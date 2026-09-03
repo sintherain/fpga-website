@@ -3,7 +3,7 @@ import React from "react";
 const Hero: React.FC = () => (
   <section id="top" className="relative flex min-h-[92vh] items-end overflow-hidden">
     <img
-      src="/images/fpga-hero.png"
+      src={`${import.meta.env.BASE_URL}images/fpga-hero.png`}
       alt="FPGA 芯片晶圆微距"
       className="absolute inset-0 h-full w-full object-cover opacity-60"
     />
