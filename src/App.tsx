@@ -1,118 +1,302 @@
-import React, { useEffect, useState } from "react";
-import Hero from "./sections/Hero";
-import FpgaBasics from "./sections/FpgaBasics";
-import UartSection from "./sections/UartSection";
-import SpiSection from "./sections/SpiSection";
-import I2cSection from "./sections/I2cSection";
-import AxiSection from "./sections/AxiSection";
-import FifoSection from "./sections/FifoSection";
-import Roadmap from "./sections/Roadmap";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Link, NavLink, Route, Routes, useLocation } from "react-router";
+import { ArrowLeft, ArrowRight, BookOpen, Menu, X } from "lucide-react";
+import { chapters } from "./content/chapters";
+import type { Chapter } from "./content/chapters";
+import Home from "./pages/Home";
+import { headingId, decodeHeadingHash } from "./lib/headings";
 
-const NAV = [
-  { id: "fpga", label: "认识 FPGA", num: "01" },
-  { id: "uart", label: "UART 串口", num: "02" },
-  { id: "spi", label: "SPI 总线", num: "03" },
-  { id: "i2c", label: "I2C 总线", num: "04" },
-  { id: "axi", label: "AXI 与握手", num: "05" },
-  { id: "fifo", label: "FIFO 缓冲", num: "06" },
-  { id: "roadmap", label: "学习路线", num: "07" },
+const pages = [
+  lazy(() => import("./sections/FpgaBasics")),
+  lazy(() => import("./sections/UartSection")),
+  lazy(() => import("./sections/SpiSection")),
+  lazy(() => import("./sections/I2cSection")),
+  lazy(() => import("./sections/AxiSection")),
+  lazy(() => import("./sections/FifoSection")),
+  lazy(() => import("./sections/Roadmap")),
 ];
-
-const App: React.FC = () => {
-  const [active, setActive] = useState("");
-
+function ScrollAndTitle() {
+  const { pathname, hash } = useLocation();
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) setActive(e.target.id);
-        }
-      },
-      { rootMargin: "-30% 0px -60% 0px" }
-    );
-    NAV.forEach(({ id }) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
+    const chapter = chapters.find((c) => pathname === `/${c.id}`);
+    document.title = chapter
+      ? `${chapter.title} · FPGA 小课堂`
+      : "FPGA 小课堂 · 接口与电路笔记";
+    const frame = requestAnimationFrame(() => {
+      if (hash) {
+        const target = document.getElementById(decodeHeadingHash(hash));
+        target?.scrollIntoView({ behavior: "instant" });
+        if (target?.id === "main-content") target.focus({ preventScroll: true });
+      } else window.scrollTo({ top: 0, behavior: "instant" });
     });
-    return () => observer.disconnect();
-  }, []);
-
+    return () => cancelAnimationFrame(frame);
+  }, [pathname, hash]);
+  return null;
+}
+function TocLinks({ chapter }: { chapter: Chapter }) {
+  const { hash } = useLocation();
+  const activeHeading = decodeHeadingHash(hash);
   return (
-    <div className="noise-bg min-h-screen bg-background">
-      {/* 桌面侧边导航 */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-border bg-[#04060a]/90 backdrop-blur lg:flex">
-        <a href="#top" className="border-b border-border px-6 py-5">
-          <div className="font-mono text-sm font-semibold tracking-wider text-[#e6eaef]">
-            FPGA<span className="text-[#22d3ee]">_</span>LAB
-          </div>
-          <div className="readout mt-1">接口协议学习站</div>
-        </a>
-        <nav className="flex-1 overflow-y-auto py-4">
-          {NAV.map((n) => (
-            <a
-              key={n.id}
-              href={`#${n.id}`}
-              className={`group flex items-baseline gap-3 border-l-2 px-6 py-2.5 text-sm transition-colors ${
-                active === n.id
-                  ? "border-[#22d3ee] text-[#22d3ee]"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
+    <nav>
+      {chapter.headings.map((text, i) => (
+        <div className="toc-group" key={text}>
+          <Link
+            className={activeHeading === headingId(text) ? "selected" : ""}
+            to={`/${chapter.id}#${headingId(text)}`}
+          >
+            <span>{String(i + 1).padStart(2, "0")}</span>
+            {text}
+          </Link>
+          {chapter.subheadings?.[text]?.map((sub) => (
+            <Link
+              key={sub}
+              className={`toc-child ${activeHeading === headingId(sub) ? "selected" : ""}`}
+              to={`/${chapter.id}#${headingId(sub)}`}
             >
-              <span className="font-mono text-[10px] opacity-60">{n.num}</span>
-              {n.label}
-            </a>
+              {sub
+                .replace(/^Verilog 实现（[12]\/2）：/, "")
+                .replace(/^\d · /, "")}
+            </Link>
           ))}
+        </div>
+      ))}
+    </nav>
+  );
+}
+function ChapterLayout({
+  index,
+  children,
+}: {
+  index: number;
+  children: React.ReactNode;
+}) {
+  const chapter = chapters[index];
+  const previous = chapters[index - 1];
+  const next = chapters[index + 1];
+  return (
+    <div className="reader-grid">
+      <article className="reader-article">
+        <div className="chapter-meta">
+          <span>第 {chapter.num} 章</span>
+          <span>{chapter.tag}</span>
+        </div>
+        <Suspense
+          fallback={
+            <p className="loading-note" role="status">
+              正在翻开这一章…
+            </p>
+          }
+        >
+          {children}
+          <ChapterScroll />
+        </Suspense>
+        <aside className="chapter-recap">
+          <BookOpen size={20} aria-hidden="true" />
+          <div>
+            <strong>读完这一章，可以试着回答</strong>
+            <p>{chapter.question}</p>
+          </div>
+        </aside>
+        <nav className="chapter-pagination" aria-label="章节翻页">
+          {previous ? (
+            <Link to={`/${previous.id}`}>
+              <ArrowLeft size={18} />
+              <span>
+                <small>上一章</small>
+                {previous.title}
+              </span>
+            </Link>
+          ) : (
+            <Link to="/">
+              <ArrowLeft size={18} />
+              <span>
+                <small>回到</small>课程目录
+              </span>
+            </Link>
+          )}
+          {next ? (
+            <Link to={`/${next.id}`}>
+              <span>
+                <small>下一章</small>
+                {next.title}
+              </span>
+              <ArrowRight size={18} />
+            </Link>
+          ) : (
+            <Link to="/">
+              <span>
+                <small>重新浏览</small>课程目录
+              </span>
+              <ArrowRight size={18} />
+            </Link>
+          )}
         </nav>
-        <div className="border-t border-border px-6 py-4 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-          写 RTL → 看波形 → 烧板子
+      </article>
+      <aside className="toc" aria-label="本章目录">
+        <details className="toc-mobile">
+          <summary>本章目录 · {chapter.headings.length} 个小节</summary>
+          <TocLinks chapter={chapter} />
+        </details>
+        <div className="toc-inner">
+          <p className="toc-label">这一章的内容</p>
+          <TocLinks chapter={chapter} />
+          <p className="toc-footnote">
+            慢慢读，动手试。
+            <br />
+            把每一个时钟沿想清楚。
+          </p>
         </div>
       </aside>
-
-      {/* 移动端顶部导航 */}
-      <header className="sticky top-0 z-40 border-b border-border bg-[#04060a]/90 backdrop-blur lg:hidden">
-        <div className="flex items-center gap-5 overflow-x-auto px-4 py-3">
-          <a href="#top" className="shrink-0 font-mono text-sm font-semibold text-[#e6eaef]">
-            FPGA<span className="text-[#22d3ee]">_</span>LAB
-          </a>
-          {NAV.map((n) => (
-            <a
-              key={n.id}
-              href={`#${n.id}`}
-              className={`shrink-0 text-xs ${
-                active === n.id ? "text-[#22d3ee]" : "text-muted-foreground"
-              }`}
-            >
-              {n.label}
-            </a>
-          ))}
-        </div>
-      </header>
-
-      <main className="lg:pl-56">
-        <Hero />
-        <div className="mx-auto max-w-4xl">
-          <FpgaBasics />
-          <UartSection />
-          <SpiSection />
-          <I2cSection />
-          <AxiSection />
-          <FifoSection />
-          <Roadmap />
-        </div>
-
-        <footer className="border-t border-border px-6 py-10 md:px-14">
-          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4">
-            <div className="font-mono text-xs text-muted-foreground">
-              FPGA_LAB — 接口协议学习站
-            </div>
-            <div className="readout">
-              有问题，先看波形。
-            </div>
-          </div>
-        </footer>
-      </main>
     </div>
   );
-};
-
-export default App;
+}
+function ChapterScroll() {
+  const { pathname, hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const frame = requestAnimationFrame(() =>
+      document.getElementById(decodeHeadingHash(hash))?.scrollIntoView({ behavior: "instant" }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [pathname, hash]);
+  return null;
+}
+export default function App() {
+  const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const current = chapters.find((c) => pathname === `/${c.id}`);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+  return (
+    <div className="site-shell">
+      <ScrollAndTitle />
+      <Link className="skip-link" to={pathname + "#main-content"}>
+        跳到正文
+      </Link>
+      <header className="mobile-header">
+        <Link to="/" className="wordmark" onClick={() => setMenuOpen(false)}>
+          <BookOpen size={23} />
+          <span>FPGA 小课堂</span>
+        </Link>
+        <button
+          aria-label={menuOpen ? "关闭章节目录" : "打开章节目录"}
+          aria-expanded={menuOpen}
+          aria-controls="course-sidebar"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? <X size={23} /> : <Menu size={23} />}
+        </button>
+      </header>
+      {menuOpen && (
+        <button
+          className="sidebar-backdrop"
+          aria-label="关闭章节目录"
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
+      <aside
+        id="course-sidebar"
+        className={`course-sidebar ${menuOpen ? "is-open" : ""}`}
+      >
+        <Link
+          to="/"
+          className="wordmark desktop-wordmark"
+          onClick={() => setMenuOpen(false)}
+        >
+          <BookOpen size={26} />
+          <span>
+            FPGA 小课堂<small>接口与电路笔记</small>
+          </span>
+        </Link>
+        <NavLink
+          to="/"
+          end
+          className="home-link"
+          onClick={() => setMenuOpen(false)}
+        >
+          课程概览 <span>↗</span>
+        </NavLink>
+        <p className="sidebar-label">循序渐进，理解电路</p>
+        <nav aria-label="课程章节">
+          {chapters.map((c) => (
+            <NavLink
+              key={c.id}
+              to={`/${c.id}`}
+              onClick={() => setMenuOpen(false)}
+              className={({ isActive }) =>
+                `chapter-link ${isActive ? "is-active" : ""}`
+              }
+            >
+              <span className="chapter-number">{c.num}</span>
+              <span>
+                {c.title}
+                <small>{c.subtitle}</small>
+              </span>
+            </NavLink>
+          ))}
+        </nav>
+        <div className="sidebar-note">
+          <span className="note-mark">✳</span>
+          <p>
+            先理解，再实现。
+            <br />
+            从一根信号线开始。
+          </p>
+        </div>
+        <a
+          className="source-link"
+          href="https://github.com/sintherain/fpga-website"
+          target="_blank"
+          rel="noreferrer"
+        >
+          查看源码 <span>↗</span>
+        </a>
+      </aside>
+      <div className="main-shell">
+        <div className="page-topline">
+          <Link to="/">接口与电路笔记</Link>
+          <span>{current ? current.title : "从一根线，读懂一场通信"}</span>
+        </div>
+        <main id="main-content" tabIndex={-1}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            {chapters.map((c, i) => {
+              const Page = pages[i];
+              return (
+                <Route
+                  key={c.id}
+                  path={`/${c.id}`}
+                  element={
+                    <ChapterLayout index={i}>
+                      <Page />
+                    </ChapterLayout>
+                  }
+                />
+              );
+            })}
+            <Route
+              path="*"
+              element={
+                <div className="not-found">
+                  <h1>这一页还没写进笔记。</h1>
+                  <p>从目录选择一个章节，继续学习吧。</p>
+                  <Link to="/">回到课程目录 →</Link>
+                </div>
+              }
+            />
+          </Routes>
+        </main>
+        <footer className="site-footer">
+          <span>FPGA 小课堂</span>
+          <span>用图理解 · 用代码验证</span>
+        </footer>
+      </div>
+    </div>
+  );
+}

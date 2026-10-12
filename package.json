@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "node scripts/check-content.mjs && node scripts/test-protocols.mjs && node scripts/test-rtl.mjs",
+    "test:content": "node scripts/check-content.mjs && node scripts/test-protocols.mjs",
+    "test:rtl": "node scripts/test-rtl.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

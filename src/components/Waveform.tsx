@@ -1,230 +1,233 @@
-import React from "react";
-
-export type WaveValue = 0 | 1 | "x";
-
-export interface WaveSegment {
-  /** 持续时长（单位：格） */
-  d: number;
-  /** 电平：0 / 1 / x（总线或未知态，渲染为交叉带） */
-  v: WaveValue;
-  /** 段内标注（如 D0、ACK） */
-  label?: string;
-}
-
-export interface WaveChannel {
-  name: string;
-  color: string;
-  segments: WaveSegment[];
-}
-
-interface WaveformProps {
+import { useEffect, useId, useRef } from "react";
+import { totalUnits } from "../lib/waveform-types";
+import type { WaveChannel } from "../lib/waveform-types";
+export type { WaveSegment, WaveChannel } from "../lib/waveform-types";
+interface Props {
   channels: WaveChannel[];
-  /** 每格像素宽度 */
   unit?: number;
-  /** 是否绘制竖直虚线网格 */
   grid?: boolean;
-  /** 高亮区间 [start, end]（单位：格） */
   highlight?: [number, number] | null;
-  /** 游标位置（单位：格），用于动画扫描 */
   cursor?: number | null;
   caption?: string;
+  samplePoints?: { at: number; label?: string }[];
 }
-
-const LABEL_W = 64;
-const ROW_H = 52;
-const PAD_T = 14;
-const PAD_B = 18;
-const HIGH_OFF = 9;
-const LOW_OFF = 36;
-
-export function totalUnits(channels: WaveChannel[]): number {
-  return Math.max(
-    ...channels.map((c) => c.segments.reduce((s, seg) => s + seg.d, 0))
-  );
-}
-
-const Waveform: React.FC<WaveformProps> = ({
+const LABEL_W = 66,
+  ROW_H = 54,
+  PAD_T = 28,
+  PAD_B = 25;
+export default function Waveform({
   channels,
   unit = 44,
   grid = true,
   highlight = null,
   cursor = null,
   caption,
-}) => {
-  const units = totalUnits(channels);
-  const width = LABEL_W + units * unit + 16;
-  const height = PAD_T + channels.length * ROW_H + PAD_B;
-
-  const tracePath = (ch: WaveChannel, rowTop: number) => {
-    const yHigh = rowTop + HIGH_OFF;
-    const yLow = rowTop + LOW_OFF;
-    let x = LABEL_W;
-    let d = "";
-    let prev: number | null = null;
-    for (const seg of ch.segments) {
-      const y = seg.v === 1 ? yHigh : seg.v === 0 ? yLow : (yHigh + yLow) / 2;
-      if (prev === null) {
-        d += `M ${x} ${y}`;
-      } else if (y !== prev) {
-        d += ` L ${x} ${prev} L ${x} ${y}`;
-      }
-      x += seg.d * unit;
-      d += ` L ${x} ${y}`;
-      prev = y;
+  samplePoints = [],
+}: Props) {
+  const hatch = useId(),
+    scroller = useRef<HTMLDivElement>(null);
+  const units = totalUnits(channels),
+    width = LABEL_W + units * unit + 18,
+    height = PAD_T + channels.length * ROW_H + PAD_B;
+  const highlightStart = highlight?.[0],
+    highlightEnd = highlight?.[1];
+  useEffect(() => {
+    const el = scroller.current;
+    if (
+      el &&
+      highlightStart !== undefined &&
+      highlightEnd !== undefined &&
+      el.scrollWidth > el.clientWidth
+    ) {
+      el.scrollTo({
+        left: Math.max(
+          0,
+          LABEL_W +
+            ((highlightStart + highlightEnd) * unit) / 2 -
+            el.clientWidth / 2,
+        ),
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
     }
-    return d;
-  };
-
+  }, [highlightStart, highlightEnd, unit]);
+  function pathFor(channel: WaveChannel, top: number) {
+    let x = LABEL_W,
+      previous: number | null = null;
+    let path = "";
+    for (const segment of channel.segments) {
+      const y = top + (segment.v === 1 ? 9 : segment.v === 0 ? 36 : 22.5);
+      path +=
+        previous === null ? `M${x} ${y}` : ` L${x} ${previous} L${x} ${y}`;
+      x += segment.d * unit;
+      path += ` L${x} ${y}`;
+      previous = y;
+    }
+    return path;
+  }
   return (
-    <figure className="my-6">
-      <div className="overflow-x-auto rounded-md border border-border bg-[#0b0e13]">
+    <figure className="waveform-figure">
+      <div className="wave-legend">
+        <span>时间从左向右 →</span>
+        <span className="wave-scroll-hint">左右滑动查看完整波形</span>
+      </div>
+      <div
+        ref={scroller}
+        className="wave-scroller"
+        tabIndex={0}
+        aria-label="时序波形，可左右滚动"
+      >
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="block min-w-[540px] w-full"
+          width={width}
+          height={height}
           role="img"
           aria-label={caption ?? "时序波形图"}
         >
           <defs>
             <pattern
-              id="wave-hatch"
+              id={hatch}
               width="6"
               height="6"
               patternUnits="userSpaceOnUse"
               patternTransform="rotate(45)"
             >
-              <rect width="6" height="6" fill="transparent" />
-              <line x1="0" y1="0" x2="0" y2="6" stroke="#334155" strokeWidth="1" />
+              <line
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="6"
+                stroke="#dce2d3"
+                strokeWidth="1"
+              />
             </pattern>
           </defs>
-
-          {/* 网格 */}
           {grid &&
-            Array.from({ length: units + 1 }, (_, i) => (
-              <line
-                key={`g${i}`}
-                x1={LABEL_W + i * unit}
-                y1={PAD_T - 4}
-                x2={LABEL_W + i * unit}
-                y2={height - PAD_B + 4}
-                stroke="#1e293b"
-                strokeWidth="1"
-                strokeDasharray={i % 1 === 0 ? "2 4" : undefined}
-              />
+            Array.from({ length: Math.floor(units) + 1 }, (_, i) => (
+              <g key={i}>
+                <line
+                  x1={LABEL_W + i * unit}
+                  y1={PAD_T - 4}
+                  x2={LABEL_W + i * unit}
+                  y2={height - PAD_B}
+                  stroke="#e6e7dd"
+                  strokeDasharray="2 4"
+                />
+                <text
+                  x={LABEL_W + i * unit}
+                  y={height - 5}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fill="#a1a794"
+                >
+                  {i}
+                </text>
+              </g>
             ))}
-
-          {/* 高亮区间 */}
           {highlight && (
             <rect
               x={LABEL_W + highlight[0] * unit}
               y={PAD_T - 6}
               width={(highlight[1] - highlight[0]) * unit}
-              height={height - PAD_T - PAD_B + 12}
-              fill="rgba(34,211,238,0.08)"
-              stroke="rgba(34,211,238,0.35)"
-              strokeDasharray="3 3"
+              height={channels.length * ROW_H + 6}
+              fill="#e4ecd5"
+              fillOpacity=".6"
+              stroke="#b9caa6"
               rx={4}
             />
           )}
-
           {channels.map((ch, ci) => {
-            const rowTop = PAD_T + ci * ROW_H;
-            const yHigh = rowTop + HIGH_OFF;
-            const yLow = rowTop + LOW_OFF;
+            const top = PAD_T + ci * ROW_H;
             let x = LABEL_W;
             return (
               <g key={ch.name}>
                 <text
                   x={LABEL_W - 10}
-                  y={(yHigh + yLow) / 2 + 4}
+                  y={top + 27}
                   textAnchor="end"
                   fill={ch.color}
                   fontSize="12"
-                  fontFamily="JetBrains Mono, ui-monospace, monospace"
                 >
                   {ch.name}
                 </text>
-                {/* x 态填充带 */}
-                {ch.segments.map((seg, si) => {
+                {ch.segments.map((seg, i) => {
                   const x0 = x;
                   x += seg.d * unit;
-                  if (seg.v !== "x") return null;
                   return (
-                    <g key={`x${si}`}>
-                      <rect
-                        x={x0}
-                        y={yHigh}
-                        width={seg.d * unit}
-                        height={yLow - yHigh}
-                        fill="url(#wave-hatch)"
-                        stroke={ch.color}
-                        strokeOpacity="0.5"
-                      />
+                    <g key={i}>
+                      {seg.v === "x" && (
+                        <rect
+                          x={x0}
+                          y={top + 9}
+                          width={seg.d * unit}
+                          height="27"
+                          fill={`url(#${hatch})`}
+                          stroke={ch.color}
+                          strokeOpacity=".4"
+                        />
+                      )}
+                      {seg.label && (
+                        <text
+                          x={x0 + (seg.d * unit) / 2}
+                          y={top + 27}
+                          textAnchor="middle"
+                          fill="#7b846c"
+                          fontSize="11"
+                        >
+                          {seg.label}
+                        </text>
+                      )}
                     </g>
                   );
                 })}
-                {/* 主轨迹 */}
                 <path
-                  d={tracePath(ch, rowTop)}
+                  d={pathFor(ch, top)}
                   fill="none"
                   stroke={ch.color}
                   strokeWidth="1.8"
                   strokeLinejoin="round"
                 />
-                {/* 段标注 */}
-                {(() => {
-                  let lx = LABEL_W;
-                  return ch.segments.map((seg, si) => {
-                    const cx = lx + (seg.d * unit) / 2;
-                    lx += seg.d * unit;
-                    if (!seg.label) return null;
-                    return (
-                      <text
-                        key={`l${si}`}
-                        x={cx}
-                        y={(yHigh + yLow) / 2 + 4}
-                        textAnchor="middle"
-                        fill="#94a3b8"
-                        fontSize="11"
-                        fontFamily="JetBrains Mono, ui-monospace, monospace"
-                      >
-                        {seg.label}
-                      </text>
-                    );
-                  });
-                })()}
               </g>
             );
           })}
-
-          {/* 扫描游标 */}
-          {cursor !== null && (
-            <g>
+          {samplePoints.map((p, i) => (
+            <g key={i}>
               <line
-                x1={LABEL_W + cursor * unit}
-                y1={PAD_T - 6}
-                x2={LABEL_W + cursor * unit}
-                y2={height - PAD_B + 6}
-                stroke="#f8fafc"
-                strokeWidth="1.2"
-                strokeOpacity="0.85"
+                x1={LABEL_W + p.at * unit}
+                y1="23"
+                x2={LABEL_W + p.at * unit}
+                y2={height - PAD_B}
+                stroke="#849c70"
+                strokeDasharray="3 3"
               />
-              <circle
-                cx={LABEL_W + cursor * unit}
-                cy={PAD_T - 6}
-                r="3"
-                fill="#f8fafc"
-              />
+              <circle cx={LABEL_W + p.at * unit} cy="20" r="3" fill="#688955" />
+              {p.label && (
+                <text
+                  x={LABEL_W + p.at * unit}
+                  y="12"
+                  textAnchor="middle"
+                  fontSize="10"
+                  fill="#6d8157"
+                >
+                  {p.label}
+                </text>
+              )}
             </g>
+          ))}
+          {cursor !== null && (
+            <line
+              x1={LABEL_W + cursor * unit}
+              y1="16"
+              x2={LABEL_W + cursor * unit}
+              y2={height - PAD_B + 5}
+              stroke="#ad7751"
+              strokeWidth="1.5"
+            />
           )}
         </svg>
       </div>
-      {caption && (
-        <figcaption className="mt-2 text-center text-[13px] text-muted-foreground">
-          {caption}
-        </figcaption>
-      )}
+      {caption && <figcaption>{caption}</figcaption>}
     </figure>
   );
-};
-
-export default Waveform;
+}
