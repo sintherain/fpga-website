@@ -5,6 +5,65 @@ export interface CodeStep {
   to?: string;
   tip?: string;
 }
+export const axiRamSteps: CodeStep[] = [
+  {
+    title: "检查请求，先算整笔访问的范围",
+    explanation:
+      "SIZE=2 表示每拍四字节，BURST=01 表示 INCR。先扩展 LEN 再加一，算不包含的末端地址；本例整个窗口只占一个 4 KiB 页，因此范围检查也排除了跨页请求。",
+    from: "// ①",
+    to: "// ②",
+  },
+  {
+    title: "定义谁能接收，以及什么算成功",
+    explanation:
+      "写侧没有活动事务且没有待收的 B 响应时，才收 AW；有写描述后才收 W。读输出空闲时才收 AR。fire 是组合条件，只在 always 的时钟沿使用，不是另一个时钟。",
+    from: "// ②",
+    to: "// ③",
+  },
+  {
+    title: "复位控制，保留存储器本身",
+    explanation:
+      "复位撤回 VALID、清活动状态和计数。不给 1024 个存储单元做复位，避免把一大片 RAM 写成复位寄存器；读取前须先写入。B 被接走时才清 BVALID。",
+    from: "// ③",
+    to: "// ④",
+  },
+  {
+    title: "AW 只来一次，要把描述记住",
+    explanation:
+      "在 aw_fire 时保存地址、ID 和 LEN+1。九位 wr_left 能容纳 256；wr_error 记录不支持的请求，使后续所有 W 拍都不会修改 RAM。",
+    from: "// ④",
+    to: "// ⑤",
+  },
+  {
+    title: "每次 W 握手，按字节写一拍",
+    explanation:
+      "仅 w_fire 才写 RAM。地址右移两位从字节地址变成字索引；WSTRB 每一位选择对应的八位数据，关闭的字节保留旧值。即使 WSTRB 全零，这一拍仍被接收。",
+    from: "// ⑤",
+    to: "// ⑥",
+  },
+  {
+    title: "末拍产生 B，其余拍推进地址与计数",
+    explanation:
+      "wr_left=1 且 WLAST=1 表示最后一拍；保存 BID/BRESP 并拉 BVALID。其余成功拍地址加四、剩余数量减一。BREADY 没来时不重新赋值，响应会保持，AWREADY 也继续关闭。",
+    from: "// ⑥",
+    to: "// ⑦",
+    tip: "正常主机必须让 WLAST 与 AWLEN 一致。错给或漏给 WLAST 属于协议违规，本例不提供通用恢复机制。",
+  },
+  {
+    title: "AR 保存读描述，并准备首拍",
+    explanation:
+      "读侧独立工作。AR 被接受后立即设置 RVALID，不等 RREADY；保存 RID，读出首字并设置响应。LEN=0 的首拍就是末拍。错误请求返回零数据和 SLVERR。",
+    from: "// ⑦",
+    to: "// ⑧",
+  },
+  {
+    title: "只有 R 被接走，才准备下一拍",
+    explanation:
+      "最后一拍 r_fire 清 RVALID；否则地址加四、剩余拍数减一，装载下一个字。当旧计数是二，下一拍就要置 RLAST。没有握手时不赋新值，整个 R payload 保持。",
+    from: "// ⑧",
+    to: "endmodule",
+  },
+];
 export const uartTxSteps: CodeStep[] = [
   {
     title: "先让所有寄存器回到已知状态",

@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 import CodeBlock from "./CodeBlock";
 import type { CodeStep } from "../content/walkthroughs";
+import { downloadCode } from "../lib/download-code";
 
 function excerpt(code: string, step: CodeStep) {
   const lines = code.trimEnd().split("\n");
@@ -31,15 +32,6 @@ export default function CodeWalkthrough({
   code: string;
   steps: CodeStep[];
 }) {
-  function download() {
-    const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = title;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
   return (
     <div className="code-walkthrough">
       <p className="walkthrough-intro">
@@ -69,7 +61,10 @@ export default function CodeWalkthrough({
           展开完整源码 · {title}（{code.trimEnd().split("\n").length} 行）
         </summary>
         <CodeBlock title={title} code={code} />
-        <button className="download-code" onClick={download}>
+        <button
+          className="download-code"
+          onClick={() => downloadCode(code, title)}
+        >
           <Download size={14} />
           下载 {title}
         </button>

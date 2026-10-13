@@ -415,6 +415,12 @@ figure {
   position: sticky;
   top: 36px;
 }
+.toc-inner nav {
+  max-height: calc(100dvh - 170px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
 .toc-label {
   font-size: 12px;
   color: #57694e;
@@ -640,6 +646,146 @@ figure {
 }
 .learning-figure {
   margin: 30px 0;
+}
+.axi-part-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 26px 0 40px;
+}
+.axi-part-links a {
+  padding: 18px;
+  border: 1px solid #d8ddcc;
+  border-radius: 8px;
+  background: #f2f3e9;
+  color: #737d64;
+  font-size: 13px;
+}
+.axi-part-links span {
+  display: block;
+  margin-bottom: 8px;
+  color: #43624f;
+  font-size: 17px;
+  font-weight: 600;
+}
+.axi-figure {
+  margin: 28px 0;
+}
+.axi-figure-card {
+  padding: 20px 14px 12px;
+  border: 1px solid #dedbd0;
+  border-radius: 9px;
+  background: #fffdf8;
+}
+.axi-figure-title {
+  margin: 0 0 18px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #43624f;
+}
+.axi-figure-scroll {
+  overflow-x: auto;
+}
+.axi-figure-scroll svg {
+  display: block;
+  width: 100%;
+  min-width: 640px;
+  height: auto;
+}
+.axi-figure figcaption {
+  padding: 10px 4px 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #737d64;
+}
+.axi-figure-hint {
+  display: none;
+}
+.axi-table-scroll {
+  margin: 24px 0;
+  overflow-x: auto;
+}
+.axi-table {
+  width: 100%;
+  min-width: 520px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.axi-table th {
+  background: #f1f2e8;
+  color: #43624f;
+  text-align: left;
+}
+.axi-table td,
+.axi-table th {
+  padding: 12px;
+  border-bottom: 1px solid #e1e4d4;
+  vertical-align: top;
+}
+.axi-burst-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+.axi-burst-controls label {
+  font-size: 13px;
+  color: #687060;
+}
+.axi-burst-controls select {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
+  padding: 9px;
+  border: 1px solid #cdd4bf;
+  border-radius: 6px;
+  background: #fffdf8;
+  color: #43624f;
+}
+.axi-burst-formula {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: 13px;
+  line-height: 1.9;
+}
+.axi-boundary-warning {
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 5px;
+  background: #f8eee8;
+  color: #984f42;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.axi-experiment-note {
+  margin-top: 16px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #737d64;
+}
+.axi-source-link,
+.axi-download-link {
+  color: #43624f;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.axi-download-link {
+  display: inline-block;
+  margin: 12px 0;
+}
+@media (max-width: 700px) {
+  .axi-part-links {
+    grid-template-columns: 1fr;
+  }
+  .axi-figure-card {
+    padding: 16px 10px 10px;
+  }
+  .axi-figure-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+  }
 }
 .spi-figure {
   margin: 28px 0;

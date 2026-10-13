@@ -9,6 +9,7 @@ const suites = {
   spi: ["spi_master", "spi_slave"],
   fifo: ["sync_fifo"],
   i2c: ["i2c_start_stop"],
+  axi: ["axi4_burst_ram"],
 };
 const compiler = process.env.IVERILOG ?? "iverilog";
 const runtime = process.env.VVP ?? "vvp";
@@ -36,6 +37,7 @@ try {
     if (build.status !== 0) throw new Error(build.stderr || "RTL 编译失败");
     const run = spawnSync(runtime, [output], {
       encoding: "utf8",
+      cwd: temp,
       timeout: 30000,
     });
     if (run.error || run.status !== 0)

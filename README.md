@@ -32,7 +32,7 @@ npm run preview  # 本地预览构建产物
 - `src/sections/`：章节正文。`H3` / `H4` 自动生成小节锚点。
 - `src/content/rtl/*.v`：完整 Verilog 源码，Vite 以原文导入页面，复制、下载和测试均使用这份源码。
 - `src/content/walkthroughs.ts`：每一段代码的摘录边界、解释与注意点。修改 RTL 后要同步更新摘录定位。
-- `src/lib/protocols.ts`：UART/SPI/I2C 波形的纯函数模型；`fifo-model.ts` 是 FIFO 接受规则。
+- `src/lib/protocols.ts`：UART/SPI/I2C 波形的纯函数模型；`fifo-model.ts` 是 FIFO 接受规则，`axi-burst.ts` 是对齐突发的地址模型。
 - `src/components/LearningDiagram.tsx`：原创 SVG 连接图、开发板和移位图，不依赖外部图片或字体服务。
 
 ## 验证
@@ -47,6 +47,8 @@ npm test             # 上述两项一起执行
 npm run build
 ```
 
-GitHub Actions 在部署前运行构建、测试和 Lint。仿真覆盖 UART 两种发送器的全部字节、接收毛刺/帧错误、SPI 主从收发与高阻、FIFO 边界/回绕、I2C 起止条件与 SCL 被拉低的等待。
+GitHub Actions 在部署前运行构建、测试和 Lint。仿真覆盖 UART 两种发送器的全部字节、接收毛刺/帧错误、SPI 主从收发与高阻、FIFO 边界/回绕、I2C 起止条件与 SCL 被拉低的等待，以及 AXI4 RAM 的 1/4/16/256 拍、W 先到、R/B 背压、ID、字节使能、错误请求、读写并行和复位。
+
+AXI4 章节分为协议原理与模块实作两部分。`axi4_burst_ram.v` 是 32 位、4 KiB、每方向单事务的教学端点，只支持四字节对齐、SIZE=2 的 INCR 突发；不是完整的通用 AXI IP。页面提供同一份模块与 `tests/rtl/axi_tb.v` 下载。独立运行测试平台会生成 `axi_tb.vcd`，可用 GTKWave 查看信号；自动测试在临时目录运行并清理波形文件。
 
 这些是教学模块与功能仿真，尚未针对某块板完成布局布线和上板验证。SPI 从机使用低速过采样结构；I2C 示例只演示 START/STOP，并非完整 I2C 主机。相应限制在正文与源码中说明。

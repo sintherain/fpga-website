@@ -41,6 +41,7 @@ const groups = {
   spiSlaveSteps: "spi_slave.v",
   fifoSteps: "sync_fifo.v",
   i2cSteps: "i2c_start_stop.v",
+  axiRamSteps: "axi4_burst_ram.v",
 };
 let parts = 0;
 for (const [name, file] of Object.entries(groups)) {

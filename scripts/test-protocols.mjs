@@ -86,3 +86,14 @@ assert.deepEqual(fifoOperation([0x11], 0x33, true, true, 2), {
 console.log(
   "PASS: UART 全部 256 字节、SPI 四种模式采样沿、I2C 起止与等长对齐、FIFO 空满与同时读写。",
 );
+
+const { burstAddresses, crosses4KiB } = await import("../src/lib/axi-burst.ts");
+assert.deepEqual(burstAddresses(0x100, 4, 4, "INCR"), [0x100, 0x104, 0x108, 0x10c]);
+assert.deepEqual(burstAddresses(0x10c, 4, 4, "WRAP"), [0x10c, 0x100, 0x104, 0x108]);
+assert.deepEqual(burstAddresses(0x10c, 4, 4, "FIXED"), [0x10c, 0x10c, 0x10c, 0x10c]);
+assert.equal(burstAddresses(0x400, 256, 4, "INCR").at(-1), 0x7fc);
+assert.equal(crosses4KiB(0xff8, 2, 4, "INCR"), false);
+assert.equal(crosses4KiB(0xff8, 4, 4, "INCR"), true);
+assert.equal(crosses4KiB(0xffc, 16, 4, "FIXED"), false);
+assert.equal(crosses4KiB(0xffc, 16, 4, "WRAP"), false);
+console.log("PASS: AXI4 对齐突发地址、回绕窗口、256 拍与 4 KiB 边界。");
