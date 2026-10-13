@@ -641,6 +641,49 @@ figure {
 .learning-figure {
   margin: 30px 0;
 }
+.spi-figure {
+  margin: 28px 0;
+}
+.spi-figure-card {
+  padding: 20px 18px 12px;
+  border: 1px solid #dedbd0;
+  border-radius: 9px;
+  background: #fffdf8;
+}
+.spi-figure-title {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #43624f;
+}
+.spi-figure-scroll {
+  overflow-x: auto;
+}
+.spi-figure-scroll svg {
+  display: block;
+  width: 100%;
+  min-width: 640px;
+  height: auto;
+}
+.spi-figure figcaption {
+  padding: 10px 4px 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #737d64;
+}
+.spi-figure-hint {
+  display: none;
+}
+@media (max-width: 700px) {
+  .spi-figure-card {
+    padding: 16px 10px 10px;
+  }
+  .spi-figure-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+  }
+}
 .illustration-surface {
   background: #f0f2e7;
   border: 1px solid #e1e4d4;
